@@ -71,8 +71,10 @@ client.on("messageCreate", async (message) => {
 
         for (const { id, name } of FIXED_LISTS) {
             const list = lists.find(l => l.name === name) || { users: [] };
-            const members = list.users.length > 0 ? list.users.map(id => `- ${id}`).join("\n") : "Empty";
-            response += `**<@${id}️⃣> - ${name}**\n\`\`\`\n${members}\n\`\`\`\n`;
+            const members = list.users.length > 0 
+                ? list.users.map(uid => `<@${uid}>`).join("\n") 
+                : "Empty";
+            response += `**${id}️⃣ - ${name}**\n${members}\n\n`;
         }
 
         return message.reply(response);
