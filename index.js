@@ -10,16 +10,20 @@ mongoose.connect(process.env.MONGO_URI, {
 }).then(() => console.log("✅ Connected to MongoDB"))
   .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
-// Fixed list names (Always visible)
-const FIXED_LISTS = ["Cristal of Chaos", "Feather of Condor", "Jewel of Creation"];
+// Fixed lists with IDs
+const FIXED_LISTS = [
+    { id: "1", name: "Crystal of Chaos" },
+    { id: "2", name: "Feather of Condor" },
+    { id: "3", name: "Jewel of Creation" }
+];
 
-// Define the Schema FIRST
+// Define Schema FIRST
 const listSchema = new mongoose.Schema({
     name: String,
-    users: [String] // Store user IDs
+    users: [String] // Stores user IDs
 });
 
-// Now define the Model AFTER the Schema
+// Define Model AFTER Schema
 const List = mongoose.model("List", listSchema);
 
 const client = new Client({
@@ -34,10 +38,10 @@ client.once("ready", async () => {
     console.log(`✅ Bot is online as ${client.user.tag}!`);
 
     // Ensure all fixed lists exist in the database
-    for (const listName of FIXED_LISTS) {
-        let list = await List.findOne({ name: listName });
+    for (const { name } of FIXED_LISTS) {
+        let list = await List.findOne({ name });
         if (!list) {
-            list = new List({ name: listName, users: [] });
+            list = new List({ name, users: [] });
             await list.save();
         }
     }
@@ -65,69 +69,73 @@ client.on("messageCreate", async (message) => {
         const lists = await List.find({});
         let response = "📜 **Available Lists:**\n\n";
 
-        for (const listName of FIXED_LISTS) {
-            const list = lists.find(l => l.name === listName) || { users: [] };
+        for (const { id, name } of FIXED_LISTS) {
+            const list = lists.find(l => l.name === name) || { users: [] };
             const members = list.users.length > 0 ? list.users.map(id => `- ${id}`).join("\n") : "Empty";
-            response += `**${listName}**\n\`\`\`\n${members}\n\`\`\`\n`;
+            response += `**${id}️⃣ - ${name}**\n\`\`\`\n${members}\n\`\`\`\n`;
         }
 
         return message.reply(response);
     }
 
-    // **Join a list**
+    // **Join a list by number**
     if (command === "join") {
-        const listName = args.join(" ");
-        if (!FIXED_LISTS.includes(listName)) return message.reply("❌ List not found! Use one of the available lists.");
+        const listId = args[0];
+        const listInfo = FIXED_LISTS.find(l => l.id === listId);
+        if (!listInfo) return message.reply("❌ Invalid list number! Use `!list` to see available lists.");
 
-        const list = await getList(listName);
+        const list = await getList(listInfo.name);
         if (list.users.includes(userId)) return message.reply("⚠️ You are already in this list!");
 
         list.users.push(userId);
         await list.save();
-        return message.reply(`✅ You have joined **${listName}**!`);
+        return message.reply(`✅ You have joined **${listInfo.name}**!`);
     }
 
-    // **Leave a list**
+    // **Leave a list by number**
     if (command === "leave") {
-        const listName = args.join(" ");
-        if (!FIXED_LISTS.includes(listName)) return message.reply("❌ List not found!");
+        const listId = args[0];
+        const listInfo = FIXED_LISTS.find(l => l.id === listId);
+        if (!listInfo) return message.reply("❌ Invalid list number! Use `!list` to see available lists.");
 
-        const list = await getList(listName);
+        const list = await getList(listInfo.name);
         if (!list.users.includes(userId)) return message.reply("⚠️ You are not in this list!");
 
         list.users = list.users.filter(u => u !== userId);
         await list.save();
-        return message.reply(`✅ You have left **${listName}**.`);
+        return message.reply(`✅ You have left **${listInfo.name}**.`);
     }
 
-    // **Remove a user (Admins only)**
+    // **Remove a user from a list (Admins only)**
     if (command === "remove") {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return message.reply("❌ Only administrators can remove users!");
 
         const targetUser = message.mentions.users.first();
-        const listName = args.slice(1).join(" ");
-        if (!targetUser || !FIXED_LISTS.includes(listName)) return message.reply("❌ Usage: `!list remove @user <list>`");
+        const listId = args[1];
+        const listInfo = FIXED_LISTS.find(l => l.id === listId);
+        if (!targetUser || !listInfo) return message.reply("❌ Usage: `!list remove @user <list_number>`");
 
-        const list = await getList(listName);
+        const list = await getList(listInfo.name);
         if (!list.users.includes(targetUser.id)) return message.reply("⚠️ This user is not in the list!");
 
         list.users = list.users.filter(u => u !== targetUser.id);
         await list.save();
-        return message.reply(`✅ <@${targetUser.id}> has been removed from **${listName}**.`);
+        return message.reply(`✅ <@${targetUser.id}> has been removed from **${listInfo.name}**.`);
     }
 
-    // **Clear a list (Admins only)**
+    // **Clear a list by number (Admins only)**
     if (command === "clear") {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return message.reply("❌ Only administrators can clear lists!");
 
-        const listName = args.join(" ");
-        if (!FIXED_LISTS.includes(listName)) return message.reply("❌ List not found!");
+        const listId = args[0];
+        const listInfo = FIXED_LISTS.find(l => l.id === listId);
+        if (!listInfo) return message.reply("❌ Invalid list number! Use `!list` to see available lists.");
 
-        const list = await getList(listName);
+        const list = await getList(listInfo.name);
         list.users = [];
         await list.save();
 
-        return message.reply(`✅ The **${listName}** list has been cleared.`);
+        return message.reply(`✅ The **${listInfo.name}** list has been cleared.`);
     }
 });
 
