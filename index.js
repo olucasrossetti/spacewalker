@@ -61,7 +61,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
 
         try {
             const result = await translate(message.content, { to: targetLang });
-            await message.reply(`🌍 **${user}, tradução para ${emoji.name}:**\n${result.text}`);
+            await message.reply(`🌍 **${user}, your translation request to ${emoji.name}:**\n${result.text}`);
         } catch (error) {
             console.error(error);
             await message.reply(`❌ ${user}, erro ao traduzir. Tente novamente.`);
