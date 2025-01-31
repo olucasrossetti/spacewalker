@@ -77,6 +77,8 @@ client.on("messageReactionAdd", async (reaction, user) => {
     }
 });
 
+const List = mongoose.model("List", listSchema);
+
 const FIXED_LISTS = ["Cristal of Chaos", "Feather of Condor", "Jewel of Creation"];
 
 // Criar um schema para as listas
