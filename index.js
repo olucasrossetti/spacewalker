@@ -4,9 +4,28 @@ const translate = require('google-translate-api-x');
 
 // Mapeamento de emojis de bandeiras para códigos de idioma
 const flagToLang = {
-    "🇺🇸": "en", // Inglês
+    "🇺🇸": "en", // Inglês (EUA)
     "🇬🇧": "en", // Inglês (UK)
-    "🇪🇸": "es", // Espanhol
+    "🇪🇸": "es", // Espanhol (Espanha)
+    "🇦🇷": "es", // Espanhol (Argentina)
+    "🇲🇽": "es", // Espanhol (México)
+    "🇨🇴": "es", // Espanhol (Colômbia)
+    "🇨🇱": "es", // Espanhol (Chile)
+    "🇵🇪": "es", // Espanhol (Peru)
+    "🇻🇪": "es", // Espanhol (Venezuela)
+    "🇪🇨": "es", // Espanhol (Equador)
+    "🇺🇾": "es", // Espanhol (Uruguai)
+    "🇬🇹": "es", // Espanhol (Guatemala)
+    "🇩🇴": "es", // Espanhol (República Dominicana)
+    "🇵🇷": "es", // Espanhol (Porto Rico)
+    "🇧🇴": "es", // Espanhol (Bolívia)
+    "🇸🇻": "es", // Espanhol (El Salvador)
+    "🇭🇳": "es", // Espanhol (Honduras)
+    "🇳🇮": "es", // Espanhol (Nicarágua)
+    "🇵🇦": "es", // Espanhol (Panamá)
+    "🇨🇷": "es", // Espanhol (Costa Rica)
+    "🇨🇺": "es", // Espanhol (Cuba)
+    "🇵🇾": "es", // Espanhol (Paraguai)
     "🇵🇹": "pt", // Português (Portugal)
     "🇧🇷": "pt", // Português (Brasil)
     "🇫🇷": "fr", // Francês
@@ -27,7 +46,7 @@ const client = new Client({
 });
 
 client.once("ready", () => {
-    console.log(`Bot está online como ${client.user.tag}!`);
+    console.log(`✅ Bot está online como ${client.user.tag}!`);
 });
 
 // Evento quando um usuário reage a uma mensagem
@@ -42,10 +61,10 @@ client.on("messageReactionAdd", async (reaction, user) => {
 
         try {
             const result = await translate(message.content, { to: targetLang });
-            await message.reply(`🌍 **Translation to ${emoji.name}:**\n${result.text}`);
+            await message.reply(`🌍 **${user}, tradução para ${emoji.name}:**\n${result.text}`);
         } catch (error) {
             console.error(error);
-            await message.reply("❌ Erro ao traduzir. Tente novamente.");
+            await message.reply(`❌ ${user}, erro ao traduzir. Tente novamente.`);
         }
     }
 });
