@@ -30,7 +30,8 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers
     ]
 });
 
@@ -57,6 +58,17 @@ async function getList(name) {
     return list;
 }
 
+// Function to get a user's nickname (or username if no nickname)
+async function getUserDisplayName(guild, userId) {
+    try {
+        const member = await guild.members.fetch(userId);
+        return member.nickname || member.user.username;
+    } catch (error) {
+        console.error(`⚠️ Error fetching user ${userId}:`, error);
+        return "Unknown User"; // If the user can't be found, return a placeholder
+    }
+}
+
 client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.content.startsWith("!list")) return;
 
@@ -72,9 +84,9 @@ client.on("messageCreate", async (message) => {
         for (const { id, name } of FIXED_LISTS) {
             const list = lists.find(l => l.name === name) || { users: [] };
             const members = list.users.length > 0 
-                ? list.users.map(uid => `<@${uid}>`).join("\n") 
+                ? (await Promise.all(list.users.map(uid => getUserDisplayName(message.guild, uid)))).join("\n") 
                 : "Empty";
-            response += `**${id}️⃣ - ${name}**\n${members}\n\n`;
+            response += `**${id}️⃣ - ${name}**\n\`\`\`\n${members}\n\`\`\`\n`;
         }
 
         return message.reply(response);
@@ -122,7 +134,7 @@ client.on("messageCreate", async (message) => {
 
         list.users = list.users.filter(u => u !== targetUser.id);
         await list.save();
-        return message.reply(`✅ <@${targetUser.id}> has been removed from **${listInfo.name}**.`);
+        return message.reply(`✅ ${await getUserDisplayName(message.guild, targetUser.id)} has been removed from **${listInfo.name}**.`);
     }
 
     // **Clear a list by number (Admins only)**
