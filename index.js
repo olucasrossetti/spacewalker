@@ -29,11 +29,11 @@ const flagToLang = {
     "🇵🇹": "pt", // Português (Portugal)
     "🇧🇷": "pt", // Português (Brasil)
     "🇫🇷": "fr", // Francês
-    "🇩🇪": "de", // Alemão
+    "🇩🇪": "de", // Alemão.
     "🇮🇹": "it", // Italiano
     "🇯🇵": "ja", // Japonês
     "🇨🇳": "zh-cn", // Chinês simplificado
-    "🇷🇺": "ru"  // Russo
+    "🇷🇺": "ru"  // Russo 
 };
 
 const client = new Client({
