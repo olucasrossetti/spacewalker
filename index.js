@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const translate = require('google-translate-api-x');
 
-// Mapeamento de emojis de bandeiras para códigos de idioma
+// Mapeamento de emojis de bandeiras para códigos
 const flagToLang = {
     "🇺🇸": "en", // Inglês (EUA)
     "🇬🇧": "en", // Inglês (UK)
