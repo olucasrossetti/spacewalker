@@ -12,3 +12,4 @@ database.prod.json
 config.dev.json
 config.prod.json
 .env
+translate.js
