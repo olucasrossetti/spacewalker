@@ -14,7 +14,10 @@ mongoose.connect(process.env.MONGO_URI, {
 const FIXED_LISTS = [
     { id: "1", name: "Crystal of Chaos" },
     { id: "2", name: "Feather of Condor" },
-    { id: "3", name: "Jewel of Creation" }
+    { id: "3", name: "Jewel of Creation" },
+    { id: "4", name: "Condor's Flame"},
+    { id: "5", name: "Chest for 1st Place"},
+    { id: "6", name: "Archangel Chest"},
 ];
 
 // Define Schema FIRST
