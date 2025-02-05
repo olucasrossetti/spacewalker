@@ -20,7 +20,6 @@ const FIXED_LISTS = [
     { id: "6", name: "Archangel Chest"},
 ];
 
-
 // Define Schema FIRST
 const listSchema = new mongoose.Schema({
     name: String,
