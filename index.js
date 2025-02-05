@@ -268,6 +268,29 @@ client.on("messageCreate", async (message) => {
 
         return message.reply(`✅ ${await getUserDisplayName(message.guild, targetUser.id)} has been confirmed for **${listInfo.name}** and is on cooldown until ${expiresAt.toLocaleString()}.`);
     }
+
+    // **Remove a user's cooldown for a list (Admins only)**
+    if (command === "removecd") {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+            return message.reply("❌ Only administrators can remove cooldowns!");
+
+        const listId = args[0];
+        const listInfo = FIXED_LISTS.find(l => l.id === listId);
+        if (!listInfo)
+            return message.reply("❌ Invalid list number! Use `!list` to view available lists.");
+
+        const targetUser = message.mentions.users.first();
+        if (!targetUser)
+            return message.reply("❌ You must mention a user! Usage: `!list removecd <list_number> @user`");
+
+        const cooldownRecord = await Cooldown.findOne({ userId: targetUser.id, listName: listInfo.name });
+        if (!cooldownRecord) {
+            return message.reply(`⚠️ ${await getUserDisplayName(message.guild, targetUser.id)} does not have a cooldown for **${listInfo.name}**.`);
+        }
+
+        await Cooldown.deleteOne({ _id: cooldownRecord._id });
+        return message.reply(`✅ Cooldown for ${await getUserDisplayName(message.guild, targetUser.id)} in **${listInfo.name}** has been removed.`);
+    }
 });
 
 // Event when a user reacts to a message (for translation)
