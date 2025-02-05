@@ -3,31 +3,37 @@ const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js')
 const mongoose = require('mongoose');
 const translate = require('google-translate-api-x');
 
-// Connect to MongoDB
+// Conecta ao MongoDB
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 }).then(() => console.log("✅ Connected to MongoDB"))
   .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
-// Fixed lists with IDs
+// Atualizamos a lista fixa para incluir a duração do cooldown (em milissegundos)
 const FIXED_LISTS = [
-    { id: "1", name: "Crystal of Chaos" },
-    { id: "2", name: "Feather of Condor" },
-    { id: "3", name: "Jewel of Creation" },
-    { id: "4", name: "Condor's Flame"},
-    { id: "5", name: "Chest for 1st Place"},
-    { id: "6", name: "Archangel Chest"},
+    { id: "1", name: "Crystal of Chaos", cooldown: 7 * 24 * 60 * 60 * 1000 }, // 1 semana
+    { id: "2", name: "Feather of Condor", cooldown: 7 * 24 * 60 * 60 * 1000 },
+    { id: "3", name: "Jewel of Creation", cooldown: 7 * 24 * 60 * 60 * 1000 },
+    { id: "4", name: "Condor's Flame", cooldown: 7 * 24 * 60 * 60 * 1000 },
+    { id: "5", name: "Chest for 1st Place", cooldown: 30 * 24 * 60 * 60 * 1000 }, // 1 mês
+    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },      // 1 mês
 ];
 
-// Define Schema FIRST
+// Schema para as listas (armazenando os usuários que entraram)
 const listSchema = new mongoose.Schema({
     name: String,
-    users: [String] // Stores user IDs
+    users: [String] // Armazena IDs de usuários
 });
-
-// Define Model AFTER Schema
 const List = mongoose.model("List", listSchema);
+
+// Novo Schema para armazenar o cooldown de cada usuário por lista
+const cooldownSchema = new mongoose.Schema({
+    userId: { type: String, required: true },
+    listName: { type: String, required: true },
+    expiresAt: { type: Date, required: true }
+});
+const Cooldown = mongoose.model("Cooldown", cooldownSchema);
 
 const client = new Client({
     intents: [
@@ -42,7 +48,7 @@ const client = new Client({
 client.once("ready", async () => {
     console.log(`✅ Bot is online as ${client.user.tag}!`);
 
-    // Ensure all fixed lists exist in the database
+    // Garante que todas as listas fixas existam no banco de dados
     for (const { name } of FIXED_LISTS) {
         let list = await List.findOne({ name });
         if (!list) {
@@ -52,7 +58,7 @@ client.once("ready", async () => {
     }
 });
 
-// Function to get or create a list
+// Função para obter ou criar uma lista
 async function getList(name) {
     let list = await List.findOne({ name });
     if (!list) {
@@ -62,16 +68,67 @@ async function getList(name) {
     return list;
 }
 
-// Function to get a user's nickname (or username if no nickname)
+// Função para obter o nome de exibição do usuário (nickname ou username)
 async function getUserDisplayName(guild, userId) {
     try {
         const member = await guild.members.fetch(userId);
         return member.nickname || member.user.username;
     } catch (error) {
         console.error(`⚠️ Error fetching user ${userId}:`, error);
-        return "Unknown User"; // If the user can't be found, return a placeholder
+        return "Unknown User";
     }
 }
+
+// Função para formatar duração (ms) em um formato legível
+function formatDuration(ms) {
+    let seconds = Math.floor(ms / 1000);
+    const days = Math.floor(seconds / (3600 * 24));
+    seconds %= 3600 * 24;
+    const hours = Math.floor(seconds / 3600);
+    seconds %= 3600;
+    const minutes = Math.floor(seconds / 60);
+    seconds %= 60;
+    const parts = [];
+    if (days) parts.push(`${days} dia${days !== 1 ? 's' : ''}`);
+    if (hours) parts.push(`${hours} hora${hours !== 1 ? 's' : ''}`);
+    if (minutes) parts.push(`${minutes} minuto${minutes !== 1 ? 's' : ''}`);
+    if (seconds) parts.push(`${seconds} segundo${seconds !== 1 ? 's' : ''}`);
+    return parts.join(', ');
+}
+
+// Mapeamento de emojis de bandeiras para códigos de idiomas
+const flagToLang = {
+    "🇺🇸": "en", // Inglês (EUA)
+    "🇬🇧": "en", // Inglês (UK)
+    "🇪🇸": "es", // Espanhol
+    "🇦🇷": "es",
+    "🇲🇽": "es",
+    "🇨🇴": "es",
+    "🇨🇱": "es",
+    "🇵🇪": "es",
+    "🇻🇪": "es",
+    "🇪🇨": "es",
+    "🇺🇾": "es",
+    "🇬🇹": "es",
+    "🇩🇴": "es",
+    "🇵🇷": "es",
+    "🇧🇴": "es",
+    "🇸🇻": "es",
+    "🇭🇳": "es",
+    "🇳🇮": "es",
+    "🇵🇦": "es",
+    "🇨🇷": "es",
+    "🇨🇺": "es",
+    "🇵🇾": "es",
+    "🇵🇹": "pt",
+    "🇧🇷": "pt",
+    "🇫🇷": "fr",
+    "🇩🇪": "de",
+    "🇮🇹": "it",
+    "🇯🇵": "ja",
+    "🇨🇳": "zh-cn",
+    "🇷🇺": "ru"
+};
 
 client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.content.startsWith("!list")) return;
@@ -80,10 +137,10 @@ client.on("messageCreate", async (message) => {
     const command = args.shift()?.toLowerCase();
     const userId = message.author.id;
 
-    // **Show all lists**
+    // **Exibir todas as listas**
     if (!command) {
         const lists = await List.find({});
-        let response = "📜 **Available Lists:**\n\n";
+        let response = "📜 **Listas Disponíveis:**\n\n";
 
         for (const { id, name } of FIXED_LISTS) {
             const list = lists.find(l => l.name === name) || { users: [] };
@@ -96,104 +153,125 @@ client.on("messageCreate", async (message) => {
         return message.reply(response);
     }
 
-    // **Join a list by number**
+    // **Entrar em uma lista**
     if (command === "join") {
         const listId = args[0];
         const listInfo = FIXED_LISTS.find(l => l.id === listId);
-        if (!listInfo) return message.reply("❌ Invalid list number! Use `!list` to see available lists.");
+        if (!listInfo) 
+            return message.reply("❌ Número de lista inválido! Use `!list` para ver as listas disponíveis.");
+
+        // Verifica se o usuário está em cooldown para essa lista
+        const existingCooldown = await Cooldown.findOne({ userId, listName: listInfo.name });
+        if (existingCooldown) {
+            if (existingCooldown.expiresAt > new Date()) {
+                const remainingTimeMs = existingCooldown.expiresAt - Date.now();
+                return message.reply(`❌ Você está em cooldown para **${listInfo.name}**. Aguarde ${formatDuration(remainingTimeMs)} antes de entrar novamente.`);
+            } else {
+                // Se o cooldown já expirou, remove-o
+                await Cooldown.deleteOne({ _id: existingCooldown._id });
+            }
+        }
 
         const list = await getList(listInfo.name);
-        if (list.users.includes(userId)) return message.reply("⚠️ You are already in this list!");
+        if (list.users.includes(userId)) 
+            return message.reply("⚠️ Você já está nessa lista!");
 
         list.users.push(userId);
         await list.save();
-        return message.reply(`✅ You have joined **${listInfo.name}**!`);
+        return message.reply(`✅ Você entrou na **${listInfo.name}**!`);
     }
 
-    // **Leave a list by number**
+    // **Sair de uma lista**
     if (command === "leave") {
         const listId = args[0];
         const listInfo = FIXED_LISTS.find(l => l.id === listId);
-        if (!listInfo) return message.reply("❌ Invalid list number! Use `!list` to see available lists.");
+        if (!listInfo) 
+            return message.reply("❌ Número de lista inválido! Use `!list` para ver as listas disponíveis.");
 
         const list = await getList(listInfo.name);
-        if (!list.users.includes(userId)) return message.reply("⚠️ You are not in this list!");
+        if (!list.users.includes(userId)) 
+            return message.reply("⚠️ Você não está nessa lista!");
 
         list.users = list.users.filter(u => u !== userId);
         await list.save();
-        return message.reply(`✅ You have left **${listInfo.name}**.`);
+        return message.reply(`✅ Você saiu da **${listInfo.name}**.`);
     }
 
-    // **Remove a user from a list (Admins only)**
+    // **Remover um usuário de uma lista (Apenas Admins)**
     if (command === "remove") {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return message.reply("❌ Only administrators can remove users!");
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) 
+            return message.reply("❌ Apenas administradores podem remover usuários!");
 
         const targetUser = message.mentions.users.first();
         const listId = args[1];
         const listInfo = FIXED_LISTS.find(l => l.id === listId);
-        if (!targetUser || !listInfo) return message.reply("❌ Usage: `!list remove @user <list_number>`");
+        if (!targetUser || !listInfo) 
+            return message.reply("❌ Uso: `!list remove @user <número_da_lista>`");
 
         const list = await getList(listInfo.name);
-        if (!list.users.includes(targetUser.id)) return message.reply("⚠️ This user is not in the list!");
+        if (!list.users.includes(targetUser.id)) 
+            return message.reply("⚠️ Esse usuário não está na lista!");
 
         list.users = list.users.filter(u => u !== targetUser.id);
         await list.save();
-        return message.reply(`✅ ${await getUserDisplayName(message.guild, targetUser.id)} has been removed from **${listInfo.name}**.`);
+        return message.reply(`✅ ${await getUserDisplayName(message.guild, targetUser.id)} foi removido(a) da **${listInfo.name}**.`);
     }
 
-    // **Clear a list by number (Admins only)**
+    // **Limpar uma lista (Apenas Admins)**
     if (command === "clear") {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return message.reply("❌ Only administrators can clear lists!");
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) 
+            return message.reply("❌ Apenas administradores podem limpar as listas!");
 
         const listId = args[0];
         const listInfo = FIXED_LISTS.find(l => l.id === listId);
-        if (!listInfo) return message.reply("❌ Invalid list number! Use `!list` to see available lists.");
+        if (!listInfo) 
+            return message.reply("❌ Número de lista inválido! Use `!list` para ver as listas disponíveis.");
 
         const list = await getList(listInfo.name);
         list.users = [];
         await list.save();
 
-        return message.reply(`✅ The **${listInfo.name}** list has been cleared.`);
+        return message.reply(`✅ A lista **${listInfo.name}** foi limpa.`);
+    }
+
+    // **Confirmar um usuário na lista (Apenas Admins)**
+    if (command === "confirm") {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) 
+            return message.reply("❌ Apenas administradores podem confirmar usuários!");
+
+        const listId = args[0];
+        const listInfo = FIXED_LISTS.find(l => l.id === listId);
+        if (!listInfo) 
+            return message.reply("❌ Número de lista inválido! Use `!list` para ver as listas disponíveis.");
+
+        const targetUser = message.mentions.users.first();
+        if (!targetUser) 
+            return message.reply("❌ Você precisa mencionar um usuário! Uso: `!list confirm <número_da_lista> @player`");
+
+        const list = await getList(listInfo.name);
+        // Remove o usuário da lista, se estiver presente
+        if (list.users.includes(targetUser.id)) {
+            list.users = list.users.filter(u => u !== targetUser.id);
+            await list.save();
+        }
+
+        // Define o cooldown para o usuário conforme a duração especificada na lista
+        const cooldownDuration = listInfo.cooldown;
+        const expiresAt = new Date(Date.now() + cooldownDuration);
+
+        await Cooldown.findOneAndUpdate(
+            { userId: targetUser.id, listName: listInfo.name },
+            { expiresAt },
+            { upsert: true }
+        );
+
+        return message.reply(`✅ ${await getUserDisplayName(message.guild, targetUser.id)} foi confirmado(a) para **${listInfo.name}** e ficará em cooldown até ${expiresAt.toLocaleString()}.`);
     }
 });
 
-// Mapeamento de emojis de bandeiras para códigos
-const flagToLang = {
-    "🇺🇸": "en", // Inglês (EUA)
-    "🇬🇧": "en", // Inglês (UK)
-    "🇪🇸": "es", // Espanhol (Espanha)
-    "🇦🇷": "es", // Espanhol (Argentina)
-    "🇲🇽": "es", // Espanhol (México)
-    "🇨🇴": "es", // Espanhol (Colômbia)
-    "🇨🇱": "es", // Espanhol (Chile)
-    "🇵🇪": "es", // Espanhol (Peru)
-    "🇻🇪": "es", // Espanhol (Venezuela)
-    "🇪🇨": "es", // Espanhol (Equador)
-    "🇺🇾": "es", // Espanhol (Uruguai)
-    "🇬🇹": "es", // Espanhol (Guatemala)
-    "🇩🇴": "es", // Espanhol (República Dominicana)
-    "🇵🇷": "es", // Espanhol (Porto Rico)
-    "🇧🇴": "es", // Espanhol (Bolívia)
-    "🇸🇻": "es", // Espanhol (El Salvador)
-    "🇭🇳": "es", // Espanhol (Honduras)
-    "🇳🇮": "es", // Espanhol (Nicarágua)
-    "🇵🇦": "es", // Espanhol (Panamá)
-    "🇨🇷": "es", // Espanhol (Costa Rica)
-    "🇨🇺": "es", // Espanhol (Cuba)
-    "🇵🇾": "es", // Espanhol (Paraguai)
-    "🇵🇹": "pt", // Português (Portugal)
-    "🇧🇷": "pt", // Português (Brasil)
-    "🇫🇷": "fr", // Francês
-    "🇩🇪": "de", // Alemão.
-    "🇮🇹": "it", // Italiano
-    "🇯🇵": "ja", // Japonês
-    "🇨🇳": "zh-cn", // Chinês simplificado
-    "🇷🇺": "ru"  // Russo 
-};
-
-// Evento quando um usuário reage a uma mensagem
+// Evento quando um usuário reage a uma mensagem (para tradução)
 client.on("messageReactionAdd", async (reaction, user) => {
-    if (user.bot) return; // Ignora reações de outros bots
+    if (user.bot) return; // Ignora reações de bots
 
     const { message, emoji } = reaction;
 
@@ -203,7 +281,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
 
         try {
             const result = await translate(message.content, { to: targetLang });
-            await message.reply(`🌍 **${user}, your translation request to ${emoji.name}:**\n${result.text}`);
+            await message.reply(`🌍 **${user}, sua tradução para ${emoji.name}:**\n${result.text}`);
         } catch (error) {
             console.error(error);
             await message.reply(`❌ ${user}, erro ao traduzir. Tente novamente.`);
@@ -211,5 +289,5 @@ client.on("messageReactionAdd", async (reaction, user) => {
     }
 });
 
-// Log in to Discord
+// Loga o bot no Discord
 client.login(process.env.TOKEN);
