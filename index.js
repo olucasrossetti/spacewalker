@@ -1,5 +1,4 @@
-require('dotenv').config();
-const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const mongoose = require('mongoose');
 const translate = require('google-translate-api-x');
 
@@ -18,8 +17,8 @@ const FIXED_LISTS = [
     { id: "3", name: "Jewel of Creation", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "4", name: "Condor's Flame", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "5", name: "Chest for 1st Place", cooldown: 30 * 24 * 60 * 60 * 1000 }, // 1 month
-    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },  // 1 month
-    { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 },    // 1 month
+    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },       // 1 month
+    { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 },
 ];
 
 // Define Schema for lists (storing the users that have joined)
@@ -29,36 +28,13 @@ const listSchema = new mongoose.Schema({
 });
 const List = mongoose.model("List", listSchema);
 
-// New Schema for storing user cooldowns per list
+// Schema for storing user cooldowns per list
 const cooldownSchema = new mongoose.Schema({
     userId: { type: String, required: true },
     listName: { type: String, required: true },
     expiresAt: { type: Date, required: true }
 });
 const Cooldown = mongoose.model("Cooldown", cooldownSchema);
-
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessageReactions
-    ]
-});
-
-client.once("ready", async () => {
-    console.log(`✅ Bot is online as ${client.user.tag}!`);
-
-    // Ensure all fixed lists exist in the database
-    for (const { name } of FIXED_LISTS) {
-        let list = await List.findOne({ name });
-        if (!list) {
-            list = new List({ name, users: [] });
-            await list.save();
-        }
-    }
-});
 
 // Function to get or create a list
 async function getList(name) {
@@ -70,11 +46,11 @@ async function getList(name) {
     return list;
 }
 
-// Function to get a user's display name (nickname or username)
+// Function to get a user's display name (shows nickname or a placeholder if not set)
 async function getUserDisplayName(guild, userId) {
     try {
         const member = await guild.members.fetch(userId);
-        return member.nickname || member.user.username;
+        return member.nickname || "No nickname set";
     } catch (error) {
         console.error(`⚠️ Error fetching user ${userId}:`, error);
         return "Unknown User";
@@ -98,7 +74,7 @@ function formatDuration(ms) {
     return parts.join(', ');
 }
 
-// Mapping of flag emojis to language codes
+// Mapping of flag emojis to language codes (for translation)
 const flagToLang = {
     "🇺🇸": "en",
     "🇬🇧": "en",
@@ -132,6 +108,29 @@ const flagToLang = {
     "🇷🇺": "ru"
 };
 
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessageReactions
+    ]
+});
+
+client.once("ready", async () => {
+    console.log(`✅ Bot is online as ${client.user.tag}!`);
+
+    // Ensure all fixed lists exist in the database
+    for (const { name } of FIXED_LISTS) {
+        let list = await List.findOne({ name });
+        if (!list) {
+            list = new List({ name, users: [] });
+            await list.save();
+        }
+    }
+});
+
 client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.content.startsWith("!list")) return;
 
@@ -139,20 +138,24 @@ client.on("messageCreate", async (message) => {
     const command = args.shift()?.toLowerCase();
     const userId = message.author.id;
 
-    // **Show all lists**
+    // **Show all lists** using an embed
     if (!command) {
-        const lists = await List.find({});
-        let response = "📜 **Available Lists:**\n\n";
+        const listsData = await List.find({});
+        const embed = new EmbedBuilder()
+            .setTitle("📜 Available Lists")
+            .setColor(0x0099ff)
+            .setTimestamp();
 
         for (const { id, name } of FIXED_LISTS) {
-            const list = lists.find(l => l.name === name) || { users: [] };
-            const members = list.users.length > 0 
-                ? (await Promise.all(list.users.map(uid => getUserDisplayName(message.guild, uid)))).join("\n") 
+            const list = listsData.find(l => l.name === name) || { users: [] };
+            const members = list.users.length > 0
+                ? (await Promise.all(list.users.map(async (uid) => {
+                    return await getUserDisplayName(message.guild, uid);
+                }))).join("\n")
                 : "Empty";
-            response += `**${id} - ${name}**\n\`\`\`\n${members}\n\`\`\`\n`;
+            embed.addFields({ name: `${id} - ${name}`, value: members });
         }
-
-        return message.reply(response);
+        return message.reply({ embeds: [embed] });
     }
 
     // **Join a list**
