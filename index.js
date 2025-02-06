@@ -147,6 +147,7 @@ client.on("messageCreate", async (message) => {
             .setColor(0x0099ff)
             .setTimestamp()
             .setAuthor({ name: "List Manager", iconURL: "https://i.imgur.com/zOHrKyL.png" })
+            .setImage("https://i.imgur.com/zZHSvWF.jpeg")
             .setFooter({ text: "Powered by List Manager", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
 
         for (const { id, name } of FIXED_LISTS) {
