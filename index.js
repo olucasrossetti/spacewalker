@@ -106,7 +106,8 @@ const flagToLang = {
     "🇮🇹": "it",
     "🇯🇵": "ja",
     "🇨🇳": "zh-cn",
-    "🇷🇺": "ru"
+    "🇷🇺": "ru",
+    "🇺🇲": "en"
 };
 
 const client = new Client({
@@ -148,7 +149,7 @@ client.on("messageCreate", async (message) => {
             .setTimestamp()
             .setAuthor({ name: "List Manager", iconURL: "https://i.imgur.com/zOHrKyL.png" })
             .setImage("https://i.imgur.com/zZHSvWF.jpeg")
-            .setFooter({ text: "Powered by List Manager", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
+            .setFooter({ text: "Powered by Pork Inc.", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
 
         for (const { id, name } of FIXED_LISTS) {
             const list = listsData.find(l => l.name === name) || { users: [] };
@@ -156,7 +157,7 @@ client.on("messageCreate", async (message) => {
                 ? (await Promise.all(list.users.map(async (uid) => {
                     return await getUserDisplayName(message.guild, uid);
                 }))).join("\n")
-                : "Empty";
+                : "Empty <:PEP_pepePrison:1336430112572313610>";
             embed.addFields({ name: `${id} - ${name}`, value: members });
         }
         return message.reply({ embeds: [embed] });
