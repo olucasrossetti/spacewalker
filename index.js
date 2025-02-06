@@ -11,15 +11,15 @@ mongoose.connect(process.env.MONGO_URI, {
   .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
 // Fixed lists with cooldown times (in milliseconds)
-// Lists 5 and 6 have a cooldown of 1 month, the rest have a cooldown of 1 week
+// Lists 5, 6, and 7 have a cooldown of 1 month; the rest have a cooldown of 1 week
 const FIXED_LISTS = [
     { id: "1", name: "Crystal of Chaos", cooldown: 7 * 24 * 60 * 60 * 1000 }, // 1 week
     { id: "2", name: "Feather of Condor", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "3", name: "Jewel of Creation", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "4", name: "Condor's Flame", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "5", name: "Chest for 1st Place", cooldown: 30 * 24 * 60 * 60 * 1000 }, // 1 month
-    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },       // 1 month
-    { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 },
+    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },      // 1 month
+    { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 }       // 1 month
 ];
 
 // Define Schema for lists (storing the users that have joined)
@@ -47,11 +47,11 @@ async function getList(name) {
     return list;
 }
 
-// Function to get a user's display name (shows nickname or a placeholder if not set)
+// Function to get a user's display name (returns nickname if available, otherwise username)
 async function getUserDisplayName(guild, userId) {
     try {
         const member = await guild.members.fetch(userId);
-        return member.nickname || "No nickname set";
+        return member.nickname || member.user.username;
     } catch (error) {
         console.error(`⚠️ Error fetching user ${userId}:`, error);
         return "Unknown User";
@@ -145,7 +145,9 @@ client.on("messageCreate", async (message) => {
         const embed = new EmbedBuilder()
             .setTitle("📜 Available Lists")
             .setColor(0x0099ff)
-            .setTimestamp();
+            .setTimestamp()
+            .setAuthor({ name: "List Manager", iconURL: "https://i.imgur.com/zOHrKyL.png" })
+            .setFooter({ text: "Powered by List Manager", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
 
         for (const { id, name } of FIXED_LISTS) {
             const list = listsData.find(l => l.name === name) || { users: [] };
