@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const mongoose = require('mongoose');
 const translate = require('google-translate-api-x');
