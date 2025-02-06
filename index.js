@@ -18,7 +18,8 @@ const FIXED_LISTS = [
     { id: "3", name: "Jewel of Creation", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "4", name: "Condor's Flame", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "5", name: "Chest for 1st Place", cooldown: 30 * 24 * 60 * 60 * 1000 }, // 1 month
-    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 }       // 1 month
+    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },  // 1 month
+    { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 },    // 1 month
 ];
 
 // Define Schema for lists (storing the users that have joined)
