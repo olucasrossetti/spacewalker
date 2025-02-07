@@ -74,8 +74,8 @@ async function updateCooldownEmbed() {
         .setTitle("⏳ Active Cooldowns")
         .setColor(0xffa500)
         .setTimestamp()
-        .setAuthor({ name: "List Manager", iconURL: "https://i.imgur.com/zOHrKyL.png" })
-        .setFooter({ text: "Powered by List Manager", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
+        .setAuthor({ name: "Pork Inc.", iconURL: "https://i.imgur.com/zOHrKyL.png" })
+        .setFooter({ text: "Powered by Pork Inc.", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
 
     // For each fixed list, add a field with active cooldowns.
     for (const { id, name } of FIXED_LISTS) {
@@ -170,8 +170,8 @@ client.on("messageCreate", async (message) => {
             .setTitle("📜 Available Lists")
             .setColor(0x0099ff)
             .setTimestamp()
-            .setAuthor({ name: "List Manager", iconURL: "https://i.imgur.com/zOHrKyL.png" })
-            .setFooter({ text: "Powered by List Manager", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
+            .setAuthor({ name: "Pork Inc.", iconURL: "https://i.imgur.com/zOHrKyL.png" })
+            .setFooter({ text: "Powered by Pork Inc.", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
 
         for (const { id, name } of FIXED_LISTS) {
             const list = listsData.find(l => l.name === name) || { users: [] };
