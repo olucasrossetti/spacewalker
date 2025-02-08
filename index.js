@@ -23,6 +23,7 @@ const FIXED_LISTS = [
     { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 }       // 1 month
 ];
 
+
 // Define Schema for lists (storing the users that have joined)
 const listSchema = new mongoose.Schema({
     name: String,
@@ -333,6 +334,41 @@ client.on("messageCreate", async (message) => {
         return;
     }
 });
+
+// Mapping of flag emojis to language codes (for translation)
+const flagToLang = {
+    "🇺🇸": "en",
+    "🇬🇧": "en",
+    "🇪🇸": "es",
+    "🇦🇷": "es",
+    "🇲🇽": "es",
+    "🇨🇴": "es",
+    "🇨🇱": "es",
+    "🇵🇪": "es",
+    "🇻🇪": "es",
+    "🇪🇨": "es",
+    "🇺🇾": "es",
+    "🇬🇹": "es",
+    "🇩🇴": "es",
+    "🇵🇷": "es",
+    "🇧🇴": "es",
+    "🇸🇻": "es",
+    "🇭🇳": "es",
+    "🇳🇮": "es",
+    "🇵🇦": "es",
+    "🇨🇷": "es",
+    "🇨🇺": "es",
+    "🇵🇾": "es",
+    "🇵🇹": "pt",
+    "🇧🇷": "pt",
+    "🇫🇷": "fr",
+    "🇩🇪": "de",
+    "🇮🇹": "it",
+    "🇯🇵": "ja",
+    "🇨🇳": "zh-cn",
+    "🇷🇺": "ru",
+    "🇺🇲": "en"
+};
 
 // Event when a user reacts to a message (for translation)
 client.on("messageReactionAdd", async (reaction, user) => {
