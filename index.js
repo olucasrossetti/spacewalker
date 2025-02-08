@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require
 const mongoose = require('mongoose');
 const translate = require('google-translate-api-x');
 
-// Connect to MongoDB
+// Conecta ao MongoDB
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -11,27 +11,26 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("✅ Connected to MongoDB"))
 .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
-// Fixed lists with cooldown times (in milliseconds)
-// Lists 5, 6, and 7 have a cooldown of 1 month; the rest have a cooldown of 1 week
+// Listas fixas com cooldown (em milissegundos)
+// Listas 5, 6 e 7 têm cooldown de 1 mês; as demais, de 1 semana
 const FIXED_LISTS = [
-    { id: "1", name: "Crystal of Chaos", cooldown: 7 * 24 * 60 * 60 * 1000 }, // 1 week
+    { id: "1", name: "Crystal of Chaos", cooldown: 7 * 24 * 60 * 60 * 1000 }, // 1 semana
     { id: "2", name: "Feather of Condor", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "3", name: "Jewel of Creation", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "4", name: "Condor's Flame", cooldown: 7 * 24 * 60 * 60 * 1000 },
-    { id: "5", name: "Chest for 1st Place", cooldown: 30 * 24 * 60 * 60 * 1000 }, // 1 month
-    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },      // 1 month
-    { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 }       // 1 month
+    { id: "5", name: "Chest for 1st Place", cooldown: 30 * 24 * 60 * 60 * 1000 }, // 1 mês
+    { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },      
+    { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 }
 ];
 
-
-// Define Schema for lists (storing the users that have joined)
+// Schema para as listas (armazenando os usuários que se juntaram)
 const listSchema = new mongoose.Schema({
     name: String,
-    users: [String] // Stores user IDs
+    users: [String] // Armazena IDs dos usuários
 });
 const List = mongoose.model("List", listSchema);
 
-// Schema for storing user cooldowns per list
+// Schema para armazenar os cooldowns por usuário em cada lista
 const cooldownSchema = new mongoose.Schema({
     userId: { type: String, required: true },
     listName: { type: String, required: true },
@@ -39,11 +38,11 @@ const cooldownSchema = new mongoose.Schema({
 });
 const Cooldown = mongoose.model("Cooldown", cooldownSchema);
 
-// Global variables for the cooldown embed message
+// Variáveis globais para o embed de cooldown no canal fixo
 const cooldownChannelId = "1337519002741641306";
 let cooldownEmbedMessageId = null;
 
-// Function to get or create a list
+// Função para obter ou criar uma lista
 async function getList(name) {
     let list = await List.findOne({ name });
     if (!list) {
@@ -53,7 +52,7 @@ async function getList(name) {
     return list;
 }
 
-// Function to get a user's display name (returns nickname if available, otherwise username)
+// Função para obter o nome de exibição do usuário (nickname se disponível, senão username)
 async function getUserDisplayName(guild, userId) {
     try {
         const member = await guild.members.fetch(userId);
@@ -64,34 +63,22 @@ async function getUserDisplayName(guild, userId) {
     }
 }
 
-// Function to build and update the cooldown embed in the target channel.
-// It either sends a new message or edits an existing one.
+// Atualiza o embed de cooldowns no canal fixo
 async function updateCooldownEmbed() {
-    // Get all active cooldowns (not expired)
     const activeCooldowns = await Cooldown.find({ expiresAt: { $gt: new Date() } });
-    
-    // Build the embed
+
     const embed = new EmbedBuilder()
         .setTitle("⏳ Active Cooldowns")
         .setColor(0xffa500)
         .setTimestamp()
-        .setAuthor({ name: "Pork Inc.", iconURL: "https://i.imgur.com/zOHrKyL.png" })
         .setFooter({ text: "Powered by Pork Inc.", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
 
-    // For each fixed list, add a field with active cooldowns.
     for (const { id, name } of FIXED_LISTS) {
         const listCooldowns = activeCooldowns.filter(cd => cd.listName === name);
         if (listCooldowns.length === 0) {
             embed.addFields({ name: `${id} - ${name}`, value: "None" });
         } else {
-            // For each cooldown record, get the user's display name and format the expiration time as a Discord relative timestamp.
-            const lines = await Promise.all(listCooldowns.map(async (cd) => {
-                // We assume the bot is in one guild; otherwise, adjust accordingly.
-                const guild = client.guilds.cache.first();
-                const displayName = await getUserDisplayName(guild, cd.userId);
-                const timestamp = Math.floor(cd.expiresAt.getTime() / 1000);
-                return `${displayName} - <t:${timestamp}:R>`;
-            }));
+            const lines = listCooldowns.map(cd => `<@${cd.userId}> - <t:${Math.floor(cd.expiresAt.getTime() / 1000)}:R>`);
             embed.addFields({ name: `${id} - ${name}`, value: lines.join("\n") });
         }
     }
@@ -99,7 +86,6 @@ async function updateCooldownEmbed() {
     const channel = client.channels.cache.get(cooldownChannelId);
     if (!channel) return console.error("Cooldown channel not found");
 
-    // If we already have the message ID, try to fetch and edit it.
     if (cooldownEmbedMessageId) {
         try {
             const message = await channel.messages.fetch(cooldownEmbedMessageId);
@@ -108,11 +94,10 @@ async function updateCooldownEmbed() {
                 return;
             }
         } catch (err) {
-            // If fetching fails (message deleted, etc.), fall through to send a new one.
+            console.error("Error fetching/editing cooldown embed message:", err);
         }
     }
-    
-    // Otherwise, search recent messages for an existing cooldown embed from our bot.
+
     const fetchedMessages = await channel.messages.fetch({ limit: 50 });
     const botMessage = fetchedMessages.find(msg =>
         msg.author.id === client.user.id &&
@@ -123,13 +108,30 @@ async function updateCooldownEmbed() {
         cooldownEmbedMessageId = botMessage.id;
         await botMessage.edit({ embeds: [embed] });
     } else {
-        // Send a new message if none found.
         const newMsg = await channel.send({ embeds: [embed] });
         cooldownEmbedMessageId = newMsg.id;
     }
 }
 
-// Set up the client
+// Remove usuários das listas caso estejam com cooldown ativo
+async function enforceCooldowns() {
+    console.log("🔄 Verificando cooldowns ativos...");
+
+    const activeCooldowns = await Cooldown.find({ expiresAt: { $gt: new Date() } });
+
+    for (const cooldown of activeCooldowns) {
+        // Usando $pull para remover o usuário da lista, se presente
+        await List.findOneAndUpdate(
+            { name: cooldown.listName },
+            { $pull: { users: cooldown.userId } }
+        );
+        console.log(`🚨 Verificado cooldown para usuário ${cooldown.userId} na lista ${cooldown.listName}`);
+    }
+
+    await updateCooldownEmbed();
+}
+
+// Configura o client do Discord
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -143,7 +145,7 @@ const client = new Client({
 client.once("ready", async () => {
     console.log(`✅ Bot is online as ${client.user.tag}!`);
 
-    // Ensure all fixed lists exist in the database
+    // Garante que todas as listas fixas existam no banco de dados
     for (const { name } of FIXED_LISTS) {
         let list = await List.findOne({ name });
         if (!list) {
@@ -151,10 +153,12 @@ client.once("ready", async () => {
             await list.save();
         }
     }
-    // Update the cooldown embed once on startup
+    // Atualiza o embed de cooldown uma vez no startup
     await updateCooldownEmbed();
-    // Then update it every 30 seconds
+    // Agenda a atualização do embed a cada 30 segundos
     setInterval(updateCooldownEmbed, 30000);
+    // Agenda a verificação dos cooldowns (e remoção dos usuários) a cada 1 minuto
+    setInterval(enforceCooldowns, 60000);
 });
 
 client.on("messageCreate", async (message) => {
@@ -164,7 +168,7 @@ client.on("messageCreate", async (message) => {
     const command = args.shift()?.toLowerCase();
     const userId = message.author.id;
 
-    // **Show all lists** using an embed
+    // **Mostrar todas as listas** usando um embed
     if (!command) {
         const listsData = await List.find({});
         const embed = new EmbedBuilder()
@@ -178,7 +182,6 @@ client.on("messageCreate", async (message) => {
             const list = listsData.find(l => l.name === name) || { users: [] };
             const members = list.users.length > 0
                 ? (await Promise.all(list.users.map(async (uid) => {
-                    // Use nickname if available, otherwise username
                     return await getUserDisplayName(message.guild, uid);
                 }))).join("\n")
                 : "Empty";
@@ -194,14 +197,13 @@ client.on("messageCreate", async (message) => {
         if (!listInfo)
             return message.reply("❌ Invalid list number! Use `!list` to view available lists.");
 
-        // Check if the user is on cooldown for this list
+        // Verifica se o usuário está com cooldown para essa lista
         const existingCooldown = await Cooldown.findOne({ userId, listName: listInfo.name });
         if (existingCooldown) {
             if (existingCooldown.expiresAt > new Date()) {
-                const remainingTimeMs = existingCooldown.expiresAt - Date.now();
                 return message.reply(`❌ You are on cooldown for **${listInfo.name}**. Please wait until <t:${Math.floor(existingCooldown.expiresAt.getTime()/1000)}:R> before joining again.`);
             } else {
-                // Remove expired cooldown
+                // Remove o cooldown expirado
                 await Cooldown.deleteOne({ _id: existingCooldown._id });
             }
         }
@@ -213,7 +215,7 @@ client.on("messageCreate", async (message) => {
         list.users.push(userId);
         await list.save();
         message.reply(`✅ You have joined **${listInfo.name}**!`);
-        // Update the cooldown embed (in case an expired cooldown was removed)
+        // Atualiza o embed de cooldown (caso algum cooldown expirado tenha sido removido)
         await updateCooldownEmbed();
         return;
     }
@@ -287,14 +289,13 @@ client.on("messageCreate", async (message) => {
         if (!targetUser)
             return message.reply("❌ You must mention a user! Usage: `!list confirm <list_number> @player`");
 
-        const list = await getList(listInfo.name);
-        // Remove the user from the list if present
-        if (list.users.includes(targetUser.id)) {
-            list.users = list.users.filter(u => u !== targetUser.id);
-            await list.save();
-        }
-
-        // Set the cooldown for the user based on the list's duration
+        // Remove o usuário da lista usando $pull
+        await List.findOneAndUpdate(
+            { name: listInfo.name },
+            { $pull: { users: targetUser.id } }
+        );
+        
+        // Define o cooldown para o usuário baseado na duração da lista
         const cooldownDuration = listInfo.cooldown;
         const expiresAt = new Date(Date.now() + cooldownDuration);
         await Cooldown.findOneAndUpdate(
@@ -303,7 +304,7 @@ client.on("messageCreate", async (message) => {
             { upsert: true }
         );
         message.reply(`✅ ${await getUserDisplayName(message.guild, targetUser.id)} has been confirmed for **${listInfo.name}** and is on cooldown until ${expiresAt.toLocaleString()}.`);
-        // Update the cooldown embed after adding a cooldown.
+        // Atualiza o embed de cooldown após adicionar o cooldown.
         await updateCooldownEmbed();
         return;
     }
@@ -329,13 +330,13 @@ client.on("messageCreate", async (message) => {
 
         await Cooldown.deleteOne({ _id: cooldownRecord._id });
         message.reply(`✅ Cooldown for ${await getUserDisplayName(message.guild, targetUser.id)} in **${listInfo.name}** has been removed.`);
-        // Update the cooldown embed after removal.
+        // Atualiza o embed de cooldown após a remoção.
         await updateCooldownEmbed();
         return;
     }
 });
 
-// Mapping of flag emojis to language codes (for translation)
+// Mapeamento de emojis de bandeira para códigos de idioma (para tradução)
 const flagToLang = {
     "🇺🇸": "en",
     "🇬🇧": "en",
@@ -370,13 +371,13 @@ const flagToLang = {
     "🇺🇲": "en"
 };
 
-// Event when a user reacts to a message (for translation)
+// Evento quando um usuário reage a uma mensagem (para tradução)
 client.on("messageReactionAdd", async (reaction, user) => {
-    if (user.bot) return; // Ignore bot reactions
+    if (user.bot) return; // Ignora reações de bots
 
     const { message, emoji } = reaction;
 
-    // Check if the emoji is a recognized flag
+    // Verifica se o emoji é uma bandeira reconhecida
     if (flagToLang[emoji.name]) {
         const targetLang = flagToLang[emoji.name];
 
@@ -390,5 +391,5 @@ client.on("messageReactionAdd", async (reaction, user) => {
     }
 });
 
-// Log in to Discord
+// Loga no Discord
 client.login(process.env.TOKEN);
