@@ -11,6 +11,9 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("✅ Connected to MongoDB"))
 .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
+const listChannelId = "1338178018341814414";
+let listEmbedMessageId = null;
+
 // Listas fixas com cooldown (em milissegundos)
 // As listas 5, 6 e 7 têm cooldown de 1 mês; as demais, de 1 semana
 const FIXED_LISTS = [
@@ -113,6 +116,70 @@ async function updateCooldownEmbed() {
     }
 }
 
+// Atualiza o embed da lista ativa no canal fixo
+async function updateActiveListEmbed() {
+    const listsData = await List.find({});
+
+    const embed = new EmbedBuilder()
+        .setTitle("📜 Active Lists")
+        .setColor(0x0099ff)
+        .setTimestamp()
+        .setAuthor({ name: "Pork Inc.", iconURL: "https://i.imgur.com/zOHrKyL.png" })
+        .setFooter({ text: "Powered by Pork Inc.", iconURL: "https://i.imgur.com/zZHSvWF.jpeg" });
+
+    for (const { id, name } of FIXED_LISTS) {
+        const list = listsData.find(l => l.name === name) || { users: [] };
+        const members = list.users.length > 0
+            ? list.users.map(uid => `<@${uid}>`).join("\n")
+            : "Empty";
+        embed.addFields({ name: `${id} - ${name}`, value: members });
+    }
+
+    const channel = client.channels.cache.get(listChannelId);
+    if (!channel) return console.error("List channel not found");
+
+    if (listEmbedMessageId) {
+        try {
+            const message = await channel.messages.fetch(listEmbedMessageId);
+            if (message) {
+                await message.edit({ embeds: [embed] });
+                return;
+            }
+        } catch (err) {
+            console.error("Error fetching/editing list embed message:", err);
+        }
+    }
+
+    const fetchedMessages = await channel.messages.fetch({ limit: 50 });
+    const botMessage = fetchedMessages.find(msg =>
+        msg.author.id === client.user.id &&
+        msg.embeds.length > 0 &&
+        msg.embeds[0].title === "📜 Active Lists"
+    );
+    if (botMessage) {
+        listEmbedMessageId = botMessage.id;
+        await botMessage.edit({ embeds: [embed] });
+    } else {
+        const newMsg = await channel.send({ embeds: [embed] });
+        listEmbedMessageId = newMsg.id;
+    }
+}
+
+// Modificação para chamar updateActiveListEmbed após mudanças nas listas
+async function modifyListAndUpdateEmbed(listName, userId, action) {
+    const list = await getList(listName);
+    if (action === "add") {
+        if (!list.users.includes(userId)) {
+            list.users.push(userId);
+            await list.save();
+        }
+    } else if (action === "remove") {
+        list.users = list.users.filter(u => u !== userId);
+        await list.save();
+    }
+    await updateActiveListEmbed();
+}
+
 // Verifica os cooldowns ativos e remove o usuário da lista, se necessário
 async function enforceCooldowns() {
     console.log("🔄 Verificando cooldowns ativos...");
@@ -151,11 +218,14 @@ client.once("ready", async () => {
         }
     }
     
-    // Atualiza imediatamente os cooldowns e o embed na inicialização
+    // Atualiza imediatamente os cooldowns e a lista ativa na inicialização
     await enforceCooldowns();
+    await updateActiveListEmbed();
     
     // Atualiza o embed de cooldown a cada 30 segundos
     setInterval(updateCooldownEmbed, 30000);
+    // Atualiza a lista ativa a cada 1 minuto
+    setInterval(updateActiveListEmbed, 60000);
     // Verifica os cooldowns e remove usuários a cada 1 minuto
     setInterval(enforceCooldowns, 60000);
 });
@@ -169,6 +239,7 @@ client.on("messageCreate", async (message) => {
 
     // Comando para mostrar todas as listas em um embed
     if (!command) {
+        await updateActiveListEmbed();
         const listsData = await List.find({});
         const embed = new EmbedBuilder()
             .setTitle("📜 Available Lists")
