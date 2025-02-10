@@ -455,4 +455,6 @@ client.on("messageReactionAdd", async (reaction, user) => {
 });
 
 // Loga no Discord
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN).catch(err => {
+    console.error("Erro ao logar no Discord:", err);
+});
