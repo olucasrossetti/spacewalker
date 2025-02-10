@@ -1,3 +1,4 @@
+console.log("Iniciando o bot...");
 require('dotenv').config();
 const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const mongoose = require('mongoose');
