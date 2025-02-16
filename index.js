@@ -27,6 +27,7 @@ const FIXED_LISTS = [
     { id: "7", name: "Awakening Jewel", cooldown: 1000 }
 ];
 
+
 // Schema para as listas (armazenando os usuários que se juntaram)
 const listSchema = new mongoose.Schema({
     name: String,
