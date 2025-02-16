@@ -18,13 +18,13 @@ let listEmbedMessageId = null;
 // Listas fixas com cooldown (em milissegundos)
 // As listas 5, 6 e 7 têm cooldown de 1 mês; as demais, de 1 semana
 const FIXED_LISTS = [
-    { id: "1", name: "Crystal of Chaos", cooldown: 7 * 24 * 60 * 60 * 1000 },
+    { id: "1", name: "Crystal of Chaos", cooldown: 2 * 24 * 60 * 60 * 1000 },
     { id: "2", name: "Feather of Condor", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "3", name: "Jewel of Creation", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "4", name: "Condor's Flame", cooldown: 7 * 24 * 60 * 60 * 1000 },
     { id: "5", name: "Chest for 1st Place", cooldown: 30 * 24 * 60 * 60 * 1000 },
     { id: "6", name: "Archangel Chest", cooldown: 30 * 24 * 60 * 60 * 1000 },
-    { id: "7", name: "Awakening Jewel", cooldown: 30 * 24 * 60 * 60 * 1000 }
+    { id: "7", name: "Awakening Jewel", cooldown: 1000 }
 ];
 
 // Schema para as listas (armazenando os usuários que se juntaram)
